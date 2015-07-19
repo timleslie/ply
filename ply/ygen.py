@@ -3,12 +3,13 @@
 # This is a support program that auto-generates different versions of the YACC parsing
 # function with different features removed for the purposes of performance.
 #
-# Users should edit the method LParser.parsedebug() in yacc.py.   The source code 
+# Users should edit the method LParser.parsedebug() in yacc.py.   The source code
 # for that method is then used to create the other methods.   See the comments in
 # yacc.py for further details.
 
 import os.path
 import shutil
+
 
 def get_source_range(lines, tag):
     srclines = enumerate(lines)
@@ -25,6 +26,7 @@ def get_source_range(lines, tag):
 
     return (start_index + 1, end_index)
 
+
 def filter_section(lines, tag):
     filtered_lines = []
     include = True
@@ -35,6 +37,7 @@ def filter_section(lines, tag):
         elif include:
             filtered_lines.append(line)
     return filtered_lines
+
 
 def main():
     dirname = os.path.dirname(__file__)
@@ -59,7 +62,7 @@ def main():
     lines[parseopt_notrack_start:parseopt_notrack_end] = parseopt_notrack_lines
     lines[parseopt_start:parseopt_end] = parseopt_lines
 
-    lines = [line.rstrip()+'\n' for line in lines]
+    lines = [line.rstrip() + '\n' for line in lines]
     with open(os.path.join(dirname, 'yacc.py'), 'w') as f:
         f.writelines(lines)
 
@@ -67,8 +70,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
-
-
-
-

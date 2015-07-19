@@ -31,7 +31,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 # -----------------------------------------------------------------------------
 
-__version__    = '3.6'
+__version__ = '3.6'
 __tabversion__ = '3.5'
 
 import re
@@ -51,6 +51,7 @@ except AttributeError:
 
 # This regular expression is used to match valid token names
 _is_identifier = re.compile(r'^[a-zA-Z0-9_]+$')
+
 
 # Exception thrown when invalid token encountered and no default error
 # handler is defined.
@@ -114,32 +115,29 @@ class NullLogger(object):
 
 class Lexer:
     def __init__(self):
-        self.lexre = None             # Master regular expression. This is a list of
-                                      # tuples (re, findex) where re is a compiled
-                                      # regular expression and findex is a list
-                                      # mapping regex group numbers to rules
-        self.lexretext = None         # Current regular expression strings
-        self.lexstatere = {}          # Dictionary mapping lexer states to master regexs
-        self.lexstateretext = {}      # Dictionary mapping lexer states to regex strings
-        self.lexstaterenames = {}     # Dictionary mapping lexer states to symbol names
-        self.lexstate = 'INITIAL'     # Current lexer state
-        self.lexstatestack = []       # Stack of lexer states
-        self.lexstateinfo = None      # State information
-        self.lexstateignore = {}      # Dictionary of ignored characters for each state
-        self.lexstateerrorf = {}      # Dictionary of error functions for each state
-        self.lexstateeoff = {}        # Dictionary of eof functions for each state
-        self.lexreflags = 0           # Optional re compile flags
-        self.lexdata = None           # Actual input data (as a string)
-        self.lexpos = 0               # Current position in input text
-        self.lexlen = 0               # Length of the input text
-        self.lexerrorf = None         # Error rule (if any)
-        self.lexeoff = None           # EOF rule (if any)
-        self.lextokens = None         # List of valid tokens
-        self.lexignore = ''           # Ignored characters
-        self.lexliterals = ''         # Literal characters that can be passed through
-        self.lexmodule = None         # Module
-        self.lineno = 1               # Current line number
-        self.lexoptimize = False      # Optimized mode
+        self.lexre = None          # Master regular expression. This is a list of tuples (re, findex) where re is a compiled regular expression and findex is a list mapping regex group numbers to rules
+        self.lexretext = None      # Current regular expression strings
+        self.lexstatere = {}       # Dictionary mapping lexer states to master regexs
+        self.lexstateretext = {}   # Dictionary mapping lexer states to regex strings
+        self.lexstaterenames = {}  # Dictionary mapping lexer states to symbol names
+        self.lexstate = 'INITIAL'  # Current lexer state
+        self.lexstatestack = []    # Stack of lexer states
+        self.lexstateinfo = None   # State information
+        self.lexstateignore = {}   # Dictionary of ignored characters for each state
+        self.lexstateerrorf = {}   # Dictionary of error functions for each state
+        self.lexstateeoff = {}     # Dictionary of eof functions for each state
+        self.lexreflags = 0        # Optional re compile flags
+        self.lexdata = None        # Actual input data (as a string)
+        self.lexpos = 0            # Current position in input text
+        self.lexlen = 0            # Length of the input text
+        self.lexerrorf = None      # Error rule (if any)
+        self.lexeoff = None        # EOF rule (if any)
+        self.lextokens = None      # List of valid tokens
+        self.lexignore = ''        # Ignored characters
+        self.lexliterals = ''      # Literal characters that can be passed through
+        self.lexmodule = None      # Module
+        self.lineno = 1            # Current line number
+        self.lexoptimize = False   # Optimized mode
 
     def clone(self, object=None):
         c = copy.copy(self)
@@ -184,7 +182,7 @@ class Lexer:
             tf.write('_lexliterals  = %s\n' % repr(self.lexliterals))
             tf.write('_lexstateinfo = %s\n' % repr(self.lexstateinfo))
 
-            # Rewrite the lexstatere table, replacing function objects with function names 
+            # Rewrite the lexstatere table, replacing function objects with function names
             tabre = {}
             for statename, lre in self.lexstatere.items():
                 titem = []
@@ -218,13 +216,13 @@ class Lexer:
         if getattr(lextab, '_tabversion', '0.0') != __tabversion__:
             raise ImportError('Inconsistent PLY version')
 
-        self.lextokens      = lextab._lextokens
-        self.lexreflags     = lextab._lexreflags
-        self.lexliterals    = lextab._lexliterals
-        self.lextokens_all  = self.lextokens | set(self.lexliterals)
-        self.lexstateinfo   = lextab._lexstateinfo
+        self.lextokens = lextab._lextokens
+        self.lexreflags = lextab._lexreflags
+        self.lexliterals = lextab._lexliterals
+        self.lextokens_all = self.lextokens | set(self.lexliterals)
+        self.lexstateinfo = lextab._lexstateinfo
         self.lexstateignore = lextab._lexstateignore
-        self.lexstatere     = {}
+        self.lexstatere = {}
         self.lexstateretext = {}
         for statename, lre in lextab._lexstatere.items():
             titem = []
@@ -304,10 +302,10 @@ class Lexer:
     # ------------------------------------------------------------
     def token(self):
         # Make local copies of frequently referenced attributes
-        lexpos    = self.lexpos
-        lexlen    = self.lexlen
+        lexpos = self.lexpos
+        lexlen = self.lexlen
         lexignore = self.lexignore
-        lexdata   = self.lexdata
+        lexdata = self.lexdata
 
         while lexpos < lexlen:
             # This code provides some short-circuit code for whitespace, tabs, and other ignored characters
@@ -351,7 +349,7 @@ class Lexer:
 
                 # Every function must return a token, if nothing, we just move to next token
                 if not newtok:
-                    lexpos    = self.lexpos         # This is here in case user has updated lexpos.
+                    lexpos = self.lexpos         # This is here in case user has updated lexpos.
                     lexignore = self.lexignore      # This is here in case there was a state change
                     break
 
@@ -430,6 +428,7 @@ class Lexer:
 # and build a Lexer object from it.
 # -----------------------------------------------------------------------------
 
+
 # -----------------------------------------------------------------------------
 # _get_regex(func)
 #
@@ -438,6 +437,7 @@ class Lexer:
 # -----------------------------------------------------------------------------
 def _get_regex(func):
     return getattr(func, 'regex', func.__doc__)
+
 
 # -----------------------------------------------------------------------------
 # get_caller_module_dict()
@@ -452,6 +452,7 @@ def get_caller_module_dict(levels):
     if f.f_globals != f.f_locals:
         ldict.update(f.f_locals)
     return ldict
+
 
 # -----------------------------------------------------------------------------
 # _funcs_to_names()
@@ -468,6 +469,7 @@ def _funcs_to_names(funclist, namelist):
             result.append(f)
     return result
 
+
 # -----------------------------------------------------------------------------
 # _names_to_funcs()
 #
@@ -482,6 +484,7 @@ def _names_to_funcs(namelist, fdict):
         else:
             result.append(n)
     return result
+
 
 # -----------------------------------------------------------------------------
 # _form_master_re()
@@ -515,12 +518,13 @@ def _form_master_re(relist, reflags, ldict, toknames):
 
         return [(lexre, lexindexfunc)], [regex], [lexindexnames]
     except Exception:
-        m = int(len(relist)/2)
+        m = int(len(relist) / 2)
         if m == 0:
             m = 1
         llist, lre, lnames = _form_master_re(relist[:m], reflags, ldict, toknames)
         rlist, rre, rnames = _form_master_re(relist[m:], reflags, ldict, toknames)
-        return (llist+rlist), (lre+rre), (lnames+rnames)
+        return (llist + rlist), (lre + rre), (lnames + rnames)
+
 
 # -----------------------------------------------------------------------------
 # def _statetoken(s,names)
@@ -536,7 +540,7 @@ def _statetoken(s, names):
     for i, part in enumerate(parts[1:], 1):
         if part not in names and part != 'ANY':
             break
-    
+
     if i > 1:
         states = tuple(parts[1:i])
     else:
@@ -557,14 +561,14 @@ def _statetoken(s, names):
 # -----------------------------------------------------------------------------
 class LexerReflect(object):
     def __init__(self, ldict, log=None, reflags=0):
-        self.ldict      = ldict
+        self.ldict = ldict
         self.error_func = None
-        self.tokens     = []
-        self.reflags    = reflags
-        self.stateinfo  = {'INITIAL': 'inclusive'}
-        self.modules    = set()
-        self.error      = False
-        self.log        = PlyLogger(sys.stderr) if log is None else log
+        self.tokens = []
+        self.reflags = reflags
+        self.stateinfo = {'INITIAL': 'inclusive'}
+        self.modules = set()
+        self.error = False
+        self.log = PlyLogger(sys.stderr) if log is None else log
 
     # Get all of the basic information
     def get_all(self):
@@ -659,17 +663,16 @@ class LexerReflect(object):
 
     # Get all of the symbols with a t_ prefix and sort them into various
     # categories (functions, strings, error functions, and ignore characters)
-
     def get_rules(self):
         tsymbols = [f for f in self.ldict if f[:2] == 't_']
 
         # Now build up a list of functions and a list of strings
         self.toknames = {}        # Mapping of symbols to token names
-        self.funcsym  = {}        # Symbols defined as functions
-        self.strsym   = {}        # Symbols defined as strings
-        self.ignore   = {}        # Ignore strings by state
-        self.errorf   = {}        # Error functions by state
-        self.eoff     = {}        # EOF functions by state
+        self.funcsym = {}        # Symbols defined as functions
+        self.strsym = {}        # Symbols defined as strings
+        self.ignore = {}        # Ignore strings by state
+        self.errorf = {}        # Error functions by state
+        self.eoff = {}        # EOF functions by state
 
         for s in self.stateinfo:
             self.funcsym[s] = []
@@ -852,6 +855,7 @@ class LexerReflect(object):
                     self.error = True
             linen += 1
 
+
 # -----------------------------------------------------------------------------
 # lex(module)
 #
@@ -866,7 +870,7 @@ def lex(module=None, object=None, debug=False, optimize=False, lextab='lextab',
     global lexer
 
     ldict = None
-    stateinfo  = {'INITIAL': 'inclusive'}
+    stateinfo = {'INITIAL': 'inclusive'}
     lexobj = Lexer()
     lexobj.lexoptimize = optimize
     global token, input
@@ -1043,12 +1047,12 @@ def lex(module=None, object=None, debug=False, optimize=False, lextab='lextab',
 
     return lexobj
 
+
 # -----------------------------------------------------------------------------
 # runmain()
 #
 # This runs the lexer as a main program
 # -----------------------------------------------------------------------------
-
 def runmain(lexer=None, data=None):
     if not data:
         try:
@@ -1076,13 +1080,13 @@ def runmain(lexer=None, data=None):
             break
         sys.stdout.write('(%s,%r,%d,%d)\n' % (tok.type, tok.value, tok.lineno, tok.lexpos))
 
+
 # -----------------------------------------------------------------------------
 # @TOKEN(regex)
 #
 # This decorator function can be used to set the regex expression on a function
 # when its docstring might need to be set in an alternative way
 # -----------------------------------------------------------------------------
-
 def TOKEN(r):
     def set_regex(f):
         if hasattr(r, '__call__'):
@@ -1094,4 +1098,3 @@ def TOKEN(r):
 
 # Alternative spelling of the TOKEN decorator
 Token = TOKEN
-
