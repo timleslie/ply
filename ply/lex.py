@@ -72,7 +72,6 @@ class LexToken(object):
 
 # This object is a stand-in for a logging object created by the
 # logging module.
-
 class PlyLogger(object):
     def __init__(self, f):
         self.f = f
@@ -99,21 +98,18 @@ class NullLogger(object):
         return self
 
 
-# -----------------------------------------------------------------------------
-#                        === Lexing Engine ===
-#
-# The following Lexer class implements the lexer runtime.   There are only
-# a few public methods and attributes:
-#
-#    input()          -  Store a new string in the lexer
-#    token()          -  Get the next token
-#    clone()          -  Clone the lexer
-#
-#    lineno           -  Current line number
-#    lexpos           -  Current position in the input string
-# -----------------------------------------------------------------------------
-
 class Lexer:
+    """
+    The Lexer class implements the lexer runtime.   There are only
+    a few public methods and attributes:
+
+       input()          -  Store a new string in the lexer
+       token()          -  Get the next token
+       clone()          -  Clone the lexer
+
+       lineno           -  Current line number
+       lexpos           -  Current position in the input string
+    """
     def __init__(self):
         self.lexre = None          # Master regular expression. This is a list of tuples (re, findex) where re is a compiled regular expression and findex is a list mapping regex group numbers to rules
         self.lexretext = None      # Current regular expression strings
@@ -166,10 +162,8 @@ class Lexer:
             c.lexmodule = object
         return c
 
-    # ------------------------------------------------------------
-    # writetab() - Write lexer information to a table file
-    # ------------------------------------------------------------
     def writetab(self, lextab, outputdir=''):
+        """ Write lexer information to a table file. """
         if isinstance(lextab, types.ModuleType):
             raise IOError("Won't overwrite existing lextab module")
         basetabmodule = lextab.split('.')[-1]
@@ -203,10 +197,8 @@ class Lexer:
                 tabeof[statename] = ef.__name__ if ef else None
             tf.write('_lexstateeoff = %s\n' % repr(tabeof))
 
-    # ------------------------------------------------------------
-    # readtab() - Read lexer information from a tab file
-    # ------------------------------------------------------------
     def readtab(self, tabfile, fdict):
+        """ Write lexer information to a table file. """
         if isinstance(tabfile, types.ModuleType):
             lextab = tabfile
         else:
@@ -243,10 +235,8 @@ class Lexer:
 
         self.begin('INITIAL')
 
-    # ------------------------------------------------------------
-    # input() - Push a new string into the lexer
-    # ------------------------------------------------------------
     def input(self, s):
+        """ Push a new string into the lexer. """
         # Pull off the first character to see if s looks like a string
         c = s[:1]
         if not isinstance(c, StringTypes):
@@ -255,10 +245,8 @@ class Lexer:
         self.lexpos = 0
         self.lexlen = len(s)
 
-    # ------------------------------------------------------------
-    # begin() - Changes the lexing state
-    # ------------------------------------------------------------
     def begin(self, state):
+        """ Push a new string into the lexer. """
         if state not in self.lexstatere:
             raise ValueError('Undefined state')
         self.lexre = self.lexstatere[state]
@@ -268,39 +256,31 @@ class Lexer:
         self.lexeoff = self.lexstateeoff.get(state, None)
         self.lexstate = state
 
-    # ------------------------------------------------------------
-    # push_state() - Changes the lexing state and saves old on stack
-    # ------------------------------------------------------------
     def push_state(self, state):
+        """ Push a new string into the lexer. """
         self.lexstatestack.append(self.lexstate)
         self.begin(state)
 
-    # ------------------------------------------------------------
-    # pop_state() - Restores the previous state
-    # ------------------------------------------------------------
     def pop_state(self):
+        """ Push a new string into the lexer. """
         self.begin(self.lexstatestack.pop())
 
-    # ------------------------------------------------------------
-    # current_state() - Returns the current lexing state
-    # ------------------------------------------------------------
     def current_state(self):
+        """ Push a new string into the lexer. """
         return self.lexstate
 
-    # ------------------------------------------------------------
-    # skip() - Skip ahead n characters
-    # ------------------------------------------------------------
     def skip(self, n):
+        """ Push a new string into the lexer. """
         self.lexpos += n
 
-    # ------------------------------------------------------------
-    # opttoken() - Return the next token from the Lexer
-    #
-    # Note: This function has been carefully implemented to be as fast
-    # as possible.  Don't make changes unless you really know what
-    # you are doing
-    # ------------------------------------------------------------
     def token(self):
+        """
+        Return the next token from the Lexer
+
+        Note: This function has been carefully implemented to be as fast
+        as possible.  Don't make changes unless you really know what
+        you are doing
+        """
         # Make local copies of frequently referenced attributes
         lexpos = self.lexpos
         lexlen = self.lexlen
@@ -340,7 +320,6 @@ class Lexer:
                 lexpos = m.end()
 
                 # If token is processed by a function, call it
-
                 tok.lexer = self      # Set additional attributes useful in token rules
                 self.lexmatch = m
                 self.lexpos = lexpos
@@ -409,7 +388,6 @@ class Lexer:
             raise RuntimeError('No input string given with input()')
         return None
 
-    # Iterator interface
     def __iter__(self):
         return self
 
@@ -429,24 +407,20 @@ class Lexer:
 # -----------------------------------------------------------------------------
 
 
-# -----------------------------------------------------------------------------
-# _get_regex(func)
-#
-# Returns the regular expression assigned to a function either as a doc string
-# or as a .regex attribute attached by the @TOKEN decorator.
-# -----------------------------------------------------------------------------
 def _get_regex(func):
+    """
+    Returns the regular expression assigned to a function either as a doc string
+    # or as a .regex attribute attached by the @TOKEN decorator.
+    """
     return getattr(func, 'regex', func.__doc__)
 
 
-# -----------------------------------------------------------------------------
-# get_caller_module_dict()
-#
-# This function returns a dictionary containing all of the symbols defined within
-# a caller further down the call stack.  This is used to get the environment
-# associated with the yacc() call if none was provided.
-# -----------------------------------------------------------------------------
 def get_caller_module_dict(levels):
+    """
+    This function returns a dictionary containing all of the symbols defined within
+    a caller further down the call stack.  This is used to get the environment
+    associated with the yacc() call if none was provided.
+    """
     f = sys._getframe(levels)
     ldict = f.f_globals.copy()
     if f.f_globals != f.f_locals:
@@ -454,13 +428,11 @@ def get_caller_module_dict(levels):
     return ldict
 
 
-# -----------------------------------------------------------------------------
-# _funcs_to_names()
-#
-# Given a list of regular expression functions, this converts it to a list
-# suitable for output to a table file
-# -----------------------------------------------------------------------------
 def _funcs_to_names(funclist, namelist):
+    """
+    Given a list of regular expression functions, this converts it to a list
+    suitable for output to a table file.
+    """
     result = []
     for f, name in zip(funclist, namelist):
         if f and f[0]:
@@ -470,13 +442,11 @@ def _funcs_to_names(funclist, namelist):
     return result
 
 
-# -----------------------------------------------------------------------------
-# _names_to_funcs()
-#
-# Given a list of regular expression function names, this converts it back to
-# functions.
-# -----------------------------------------------------------------------------
 def _names_to_funcs(namelist, fdict):
+    """
+    Given a list of regular expression function names, this converts it back to  functions.
+    """
+
     result = []
     for n in namelist:
         if n and n[0]:
@@ -486,14 +456,12 @@ def _names_to_funcs(namelist, fdict):
     return result
 
 
-# -----------------------------------------------------------------------------
-# _form_master_re()
-#
-# This function takes a list of all of the regex components and attempts to
-# form the master regular expression.  Given limitations in the Python re
-# module, it may be necessary to break the master regex into separate expressions.
-# -----------------------------------------------------------------------------
 def _form_master_re(relist, reflags, ldict, toknames):
+    """
+    This function takes a list of all of the regex components and attempts to
+    form the master regular expression.  Given limitations in the Python re
+    module, it may be necessary to break the master regex into separate expressions.
+    """
     if not relist:
         return []
     regex = '|'.join(relist)
@@ -526,15 +494,13 @@ def _form_master_re(relist, reflags, ldict, toknames):
         return (llist + rlist), (lre + rre), (lnames + rnames)
 
 
-# -----------------------------------------------------------------------------
-# def _statetoken(s,names)
-#
-# Given a declaration name s of the form "t_" and a dictionary whose keys are
-# state names, this function returns a tuple (states,tokenname) where states
-# is a tuple of state names and tokenname is the name of the token.  For example,
-# calling this with s = "t_foo_bar_SPAM" might return (('foo','bar'),'SPAM')
-# -----------------------------------------------------------------------------
 def _statetoken(s, names):
+    """
+    Given a declaration name s of the form "t_" and a dictionary whose keys are
+    state names, this function returns a tuple (states,tokenname) where states
+    is a tuple of state names and tokenname is the name of the token.  For example,
+    calling this with s = "t_foo_bar_SPAM" might return (('foo','bar'),'SPAM')
+    """
     nonstate = 1
     parts = s.split('_')
     for i, part in enumerate(parts[1:], 1):
@@ -553,13 +519,11 @@ def _statetoken(s, names):
     return (states, tokenname)
 
 
-# -----------------------------------------------------------------------------
-# LexerReflect()
-#
-# This class represents information needed to build a lexer as extracted from a
-# user's input file.
-# -----------------------------------------------------------------------------
 class LexerReflect(object):
+    """
+    This class represents information needed to build a lexer as extracted from a
+    user's input file.
+    """
     def __init__(self, ldict, log=None, reflags=0):
         self.ldict = ldict
         self.error_func = None
@@ -824,15 +788,12 @@ class LexerReflect(object):
         for module in self.modules:
             self.validate_module(module)
 
-    # -----------------------------------------------------------------------------
-    # validate_module()
-    #
-    # This checks to see if there are duplicated t_rulename() functions or strings
-    # in the parser input file.  This is done using a simple regular expression
-    # match on each line in the source code of the given module.
-    # -----------------------------------------------------------------------------
-
     def validate_module(self, module):
+        """
+        This checks to see if there are duplicated t_rulename() functions or strings
+        in the parser input file.  This is done using a simple regular expression
+        match on each line in the source code of the given module.
+        """
         lines, linen = inspect.getsourcelines(module)
 
         fre = re.compile(r'\s*def\s+(t_[a-zA-Z_0-9]*)\(')
@@ -856,14 +817,13 @@ class LexerReflect(object):
             linen += 1
 
 
-# -----------------------------------------------------------------------------
-# lex(module)
-#
-# Build all of the regular expression rules from definitions in the supplied module
-# -----------------------------------------------------------------------------
 def lex(module=None, object=None, debug=False, optimize=False, lextab='lextab',
         reflags=0, nowarn=False, outputdir=None, debuglog=None, errorlog=None):
-
+    """
+    This checks to see if there are duplicated t_rulename() functions or strings
+    in the parser input file.  This is done using a simple regular expression
+    match on each line in the source code of the given module.
+    """
     if lextab is None:
         lextab = 'lextab'
 
@@ -1048,12 +1008,8 @@ def lex(module=None, object=None, debug=False, optimize=False, lextab='lextab',
     return lexobj
 
 
-# -----------------------------------------------------------------------------
-# runmain()
-#
-# This runs the lexer as a main program
-# -----------------------------------------------------------------------------
 def runmain(lexer=None, data=None):
+    """ This runs the lexer as a main program. """
     if not data:
         try:
             filename = sys.argv[1]
@@ -1081,13 +1037,11 @@ def runmain(lexer=None, data=None):
         sys.stdout.write('(%s,%r,%d,%d)\n' % (tok.type, tok.value, tok.lineno, tok.lexpos))
 
 
-# -----------------------------------------------------------------------------
-# @TOKEN(regex)
-#
-# This decorator function can be used to set the regex expression on a function
-# when its docstring might need to be set in an alternative way
-# -----------------------------------------------------------------------------
 def TOKEN(r):
+    """
+    This decorator function can be used to set the regex expression on a function
+    when its docstring might need to be set in an alternative way
+    """
     def set_regex(f):
         if hasattr(r, '__call__'):
             f.regex = _get_regex(r)
