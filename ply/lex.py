@@ -53,16 +53,18 @@ except AttributeError:
 _is_identifier = re.compile(r'^[a-zA-Z0-9_]+$')
 
 
-# Exception thrown when invalid token encountered and no default error
-# handler is defined.
 class LexError(Exception):
+    """
+    Exception thrown when invalid token encountered and no default error
+    handler is defined.
+    """
     def __init__(self, message, s):
         self.args = (message,)
         self.text = s
 
 
-# Token class.  This class is used to represent the tokens produced.
 class LexToken(object):
+    """ Token class.  This class is used to represent the tokens produced. """
     def __str__(self):
         return 'LexToken(%s,%r,%d,%d)' % (self.type, self.value, self.lineno, self.lexpos)
 
@@ -70,9 +72,11 @@ class LexToken(object):
         return str(self)
 
 
-# This object is a stand-in for a logging object created by the
-# logging module.
 class PlyLogger(object):
+    """
+    This object is a stand-in for a logging object created by the
+    logging module.
+    """
     def __init__(self, f):
         self.f = f
 
@@ -89,8 +93,8 @@ class PlyLogger(object):
     debug = critical
 
 
-# Null logger is used when no output is generated. Does nothing.
 class NullLogger(object):
+    """ Null logger is used when no output is generated. Does nothing. """
     def __getattribute__(self, name):
         return self
 
@@ -848,8 +852,7 @@ def lex(module=None, object=None, debug=False, optimize=False, lextab='lextab',
 
     # Get the module dictionary used for the parser
     if module:
-        _items = [(k, getattr(module, k)) for k in dir(module)]
-        ldict = dict(_items)
+        ldict = dict([(k, getattr(module, k)) for k in dir(module)])
         # If no __file__ attribute is available, try to obtain it from the __module__ instead
         if '__file__' not in ldict:
             ldict['__file__'] = sys.modules[ldict['__module__']].__file__

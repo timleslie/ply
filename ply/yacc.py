@@ -1413,28 +1413,17 @@ class Grammar(object):
     """
     def __init__(self, terminals):
         self.Productions = [None]  # A list of all of the productions.  The first entry is always reserved for the purpose of building an augmented grammar
-
         self.Prodnames = {}      # A dictionary mapping the names of nonterminals to a list of all productions of that nonterminal.
-
         self.Prodmap = {}      # A dictionary that is only used to detect duplicate productions.
-
         self.Terminals = {}      # A dictionary mapping the names of terminal symbols to a list of the rules where they are used.
-
         for term in terminals:
             self.Terminals[term] = []
-
         self.Terminals['error'] = []
-
         self.Nonterminals = {}      # A dictionary mapping names of nonterminals to a list of rule numbers where they are used.
-
         self.First = {}      # A dictionary of precomputed FIRST(x) symbols
-
         self.Follow = {}      # A dictionary of precomputed FOLLOW(x) symbols
-
         self.Precedence = {}      # Precedence rules for each terminal. Contains tuples of the form ('right',level) or ('nonassoc', level) or ('left',level)
-
         self.UsedPrecedence = set()  # Precedence rules that were actually used by the grammer. This is only used to provide error checking and to generate a warning about unused precedence rules.
-
         self.Start = None           # Starting symbol for the grammar
 
     def __len__(self):
