@@ -99,12 +99,14 @@ else:
 MAXINT = sys.maxsize
 
 
-# This object is a stand-in for a logging object created by the
-# logging module.   PLY will use this by default to create things
-# such as the parser.out file.  If a user wants more detailed
-# information, they can create their own logging object and pass
-# it into PLY.
 class PlyLogger(object):
+    """
+    This object is a stand-in for a logging object created by the
+    logging module.   PLY will use this by default to create things
+    such as the parser.out file.  If a user wants more detailed
+    information, they can create their own logging object and pass
+    it into PLY.
+    """
     def __init__(self, f):
         self.f = f
 
@@ -122,8 +124,8 @@ class PlyLogger(object):
     critical = debug
 
 
-# Null logger is used when no output is generated. Does nothing.
 class NullLogger(object):
+    """ Null logger is used when no output is generated. Does nothing. """
     def __getattribute__(self, name):
         return self
 
@@ -131,8 +133,8 @@ class NullLogger(object):
         return self
 
 
-# Exception raised for yacc-related errors
 class YaccError(Exception):
+    """ Exception raised for yacc-related errors. """
     pass
 
 
@@ -212,15 +214,17 @@ def call_errorfunc(errorfunc, token, parser):
 #-----------------------------------------------------------------------------
 
 
-# This class is used to hold non-terminal grammar symbols during parsing.
-# It normally has the following attributes set:
-#        .type       = Grammar symbol type
-#        .value      = Symbol value
-#        .lineno     = Starting line number
-#        .endlineno  = Ending line number (optional, set automatically)
-#        .lexpos     = Starting lex position
-#        .endlexpos  = Ending lex position (optional, set automatically)
 class YaccSymbol:
+    """
+    # This class is used to hold non-terminal grammar symbols during parsing.
+    # It normally has the following attributes set:
+    #        .type       = Grammar symbol type
+    #        .value      = Symbol value
+    #        .lineno     = Starting line number
+    #        .endlineno  = Ending line number (optional, set automatically)
+    #        .lexpos     = Starting lex position
+    #        .endlexpos  = Ending lex position (optional, set automatically)
+    """
     def __str__(self):
         return self.type
 
@@ -228,15 +232,17 @@ class YaccSymbol:
         return str(self)
 
 
-# This class is a wrapper around the objects actually passed to each
-# grammar rule.   Index lookup and assignment actually assign the
-# .value attribute of the underlying YaccSymbol object.
-# The lineno() method returns the line number of a given
-# item (or 0 if not defined).   The linespan() method returns
-# a tuple of (startline,endline) representing the range of lines
-# for a symbol.  The lexspan() method returns a tuple (lexpos,endlexpos)
-# representing the range of positional information for a symbol.
 class YaccProduction:
+    """
+    # This class is a wrapper around the objects actually passed to each
+    # grammar rule.   Index lookup and assignment actually assign the
+    # .value attribute of the underlying YaccSymbol object.
+    # The lineno() method returns the line number of a given
+    # item (or 0 if not defined).   The linespan() method returns
+    # a tuple of (startline,endline) representing the range of lines
+    # for a symbol.  The lexspan() method returns a tuple (lexpos,endlexpos)
+    # representing the range of positional information for a symbol.
+    """
     def __init__(self, s, stack=None):
         self.slice = s
         self.stack = stack
@@ -1660,13 +1666,11 @@ class Grammar(object):
 
         return unused_tok
 
-    # ------------------------------------------------------------------------------
-    # unused_rules()
-    #
-    # Find all grammar rules that were defined,  but not used (maybe not reachable)
-    # Returns a list of productions.
-    # ------------------------------------------------------------------------------
     def unused_rules(self):
+        """
+        Find all grammar rules that were defined,  but not used (maybe not reachable)
+        Returns a list of productions.
+        """
         unused_prod = []
         for s, v in self.Nonterminals.items():
             if not v:
@@ -1674,15 +1678,13 @@ class Grammar(object):
                 unused_prod.append(p)
         return unused_prod
 
-    # -----------------------------------------------------------------------------
-    # unused_precedence()
-    #
-    # Returns a list of tuples (term,precedence) corresponding to precedence
-    # rules that were never used by the grammar.  term is the name of the terminal
-    # on which precedence was applied and precedence is a string such as 'left' or
-    # 'right' corresponding to the type of precedence.
-    # -----------------------------------------------------------------------------
     def unused_precedence(self):
+        """
+        Returns a list of tuples (term,precedence) corresponding to precedence
+        rules that were never used by the grammar.  term is the name of the terminal
+        on which precedence was applied and precedence is a string such as 'left' or
+        'right' corresponding to the type of precedence.
+        """
         unused = []
         for termname in self.Precedence:
             if not (termname in self.Terminals or termname in self.UsedPrecedence):
@@ -1690,16 +1692,13 @@ class Grammar(object):
 
         return unused
 
-    # -------------------------------------------------------------------------
-    # _first()
-    #
-    # Compute the value of FIRST1(beta) where beta is a tuple of symbols.
-    #
-    # During execution of compute_first1, the result may be incomplete.
-    # Afterward (e.g., when called from compute_follow()), it will be complete.
-    # -------------------------------------------------------------------------
     def _first(self, beta):
+        """
+        Compute the value of FIRST1(beta) where beta is a tuple of symbols.
 
+        During execution of compute_first1, the result may be incomplete.
+        Afterward (e.g., when called from compute_follow()), it will be complete.
+        """
         # We are computing First(x1,x2,x3,...,xn)
         result = []
         for x in beta:
@@ -1728,12 +1727,8 @@ class Grammar(object):
 
         return result
 
-    # -------------------------------------------------------------------------
-    # compute_first()
-    #
-    # Compute the value of FIRST1(X) for all symbols
-    # -------------------------------------------------------------------------
     def compute_first(self):
+        """ Compute the value of FIRST1(X) for all symbols. """
         if self.First:
             return self.First
 
@@ -1763,14 +1758,12 @@ class Grammar(object):
 
         return self.First
 
-    # ---------------------------------------------------------------------
-    # compute_follow()
-    #
-    # Computes all of the follow sets for every non-terminal symbol.  The
-    # follow set is the set of all symbols that might follow a given
-    # non-terminal.  See the Dragon book, 2nd Ed. p. 189.
-    # ---------------------------------------------------------------------
     def compute_follow(self, start=None):
+        """
+        Computes all of the follow sets for every non-terminal symbol.  The
+        follow set is the set of all symbols that might follow a given
+        non-terminal.  See the Dragon book, 2nd Ed. p. 189.
+        """
         # If already computed, return the result
         if self.Follow:
             return self.Follow
@@ -1813,21 +1806,19 @@ class Grammar(object):
                 break
         return self.Follow
 
-    # -----------------------------------------------------------------------------
-    # build_lritems()
-    #
-    # This function walks the list of productions and builds a complete set of the
-    # LR items.  The LR items are stored in two ways:  First, they are uniquely
-    # numbered and placed in the list _lritems.  Second, a linked list of LR items
-    # is built for each production.  For example:
-    #
-    #   E -> E PLUS E
-    #
-    # Creates the list
-    #
-    #  [E -> . E PLUS E, E -> E . PLUS E, E -> E PLUS . E, E -> E PLUS E . ]
-    # -----------------------------------------------------------------------------
     def build_lritems(self):
+        """
+        # This function walks the list of productions and builds a complete set of the
+        # LR items.  The LR items are stored in two ways:  First, they are uniquely
+        # numbered and placed in the list _lritems.  Second, a linked list of LR items
+        # is built for each production.  For example:
+        #
+        #   E -> E PLUS E
+        #
+        # Creates the list
+        #
+        #  [E -> . E PLUS E, E -> E . PLUS E, E -> E PLUS . E, E -> E PLUS E . ]
+        """
         for p in self.Productions:
             lastlri = p
             i = 0
@@ -1856,18 +1847,16 @@ class Grammar(object):
             p.lr_items = lr_items
 
 
-# -----------------------------------------------------------------------------
-#                            == Class LRTable ==
-#
-# This basic class represents a basic table of LR parsing information.
-# Methods for generating the tables are not defined here.  They are defined
-# in the derived class LRGeneratedTable.
-# -----------------------------------------------------------------------------
 class VersionError(YaccError):
     pass
 
 
 class LRTable(object):
+    """
+    This basic class represents a basic table of LR parsing information.
+    Methods for generating the tables are not defined here.  They are defined
+    in the derived class LRGeneratedTable.
+    """
     def __init__(self):
         self.lr_action = None
         self.lr_goto = None
@@ -1918,8 +1907,8 @@ class LRTable(object):
         in_f.close()
         return signature
 
-    # Bind all production function names to callable objects in pdict
     def bind_callables(self, pdict):
+        """ Bind all production function names to callable objects in pdict. """
         for p in self.lr_productions:
             p.bind(pdict)
 
@@ -1987,13 +1976,11 @@ class LALRError(YaccError):
     pass
 
 
-# -----------------------------------------------------------------------------
-#                             == LRGeneratedTable ==
-#
-# This class implements the LR table generation algorithm.  There are no
-# public methods except for write()
-# -----------------------------------------------------------------------------
 class LRGeneratedTable(LRTable):
+    """
+    This class implements the LR table generation algorithm.  There are no
+    public methods except for write()
+    """
     def __init__(self, grammar, method='LALR', log=None):
         if method not in ['SLR', 'LALR']:
             raise LALRError('Unsupported method %s' % method)
@@ -2029,8 +2016,8 @@ class LRGeneratedTable(LRTable):
         self.grammar.compute_follow()
         self.lr_parse_table()
 
-    # Compute the LR(0) closure operation on I, where I is a set of LR(0) items.
     def lr0_closure(self, I):
+        """ Compute the LR(0) closure operation on I, where I is a set of LR(0) items. """
         self._add_count += 1
 
         # Add everything in I to J
@@ -2049,13 +2036,15 @@ class LRGeneratedTable(LRTable):
 
         return J
 
-    # Compute the LR(0) goto function goto(I,X) where I is a set
-    # of LR(0) items and X is a grammar symbol.   This function is written
-    # in a way that guarantees uniqueness of the generated goto sets
-    # (i.e. the same goto set will never be returned as two different Python
-    # objects).  With uniqueness, we can later do fast set comparisons using
-    # id(obj) instead of element-wise comparison.
     def lr0_goto(self, I, x):
+        """
+        Compute the LR(0) goto function goto(I,X) where I is a set
+        of LR(0) items and X is a grammar symbol.   This function is written
+        in a way that guarantees uniqueness of the generated goto sets
+        (i.e. the same goto set will never be returned as two different Python
+        objects).  With uniqueness, we can later do fast set comparisons using
+        id(obj) instead of element-wise comparison.
+        """
         # First we look for a previously cached entry
         g = self.lr_goto_cache.get((id(I), x))
         if g:
@@ -2089,8 +2078,8 @@ class LRGeneratedTable(LRTable):
         self.lr_goto_cache[(id(I), x)] = g
         return g
 
-    # Compute the LR(0) sets of item function
     def lr0_items(self):
+        """ Compute the LR(0) sets of item function. """
         C = [self.lr0_closure([self.grammar.Productions[0].lr_next])]
         i = 0
         for I in C:
@@ -2139,13 +2128,11 @@ class LRGeneratedTable(LRTable):
     #
     # -----------------------------------------------------------------------------
 
-    # -----------------------------------------------------------------------------
-    # compute_nullable_nonterminals()
-    #
-    # Creates a dictionary containing all of the non-terminals that might produce
-    # an empty production.
-    # -----------------------------------------------------------------------------
     def compute_nullable_nonterminals(self):
+        """
+        Creates a dictionary containing all of the non-terminals that might produce
+        an empty production.
+        """
         nullable = set()
         num_nullable = 0
         while True:
@@ -2163,17 +2150,15 @@ class LRGeneratedTable(LRTable):
             num_nullable = len(nullable)
         return nullable
 
-    # -----------------------------------------------------------------------------
-    # find_nonterminal_trans(C)
-    #
-    # Given a set of LR(0) items, this functions finds all of the non-terminal
-    # transitions.    These are transitions in which a dot appears immediately before
-    # a non-terminal.   Returns a list of tuples of the form (state,N) where state
-    # is the state number and N is the nonterminal symbol.
-    #
-    # The input C is the set of LR(0) items.
-    # -----------------------------------------------------------------------------
     def find_nonterminal_transitions(self, C):
+        """
+        Given a set of LR(0) items, this functions finds all of the non-terminal
+        transitions.    These are transitions in which a dot appears immediately before
+        a non-terminal.   Returns a list of tuples of the form (state,N) where state
+        is the state number and N is the nonterminal symbol.
+
+        The input C is the set of LR(0) items.
+        """
         trans = []
         for stateno, state in enumerate(C):
             for p in state:
@@ -2317,39 +2302,35 @@ class LRGeneratedTable(LRTable):
 
         return lookdict, includedict
 
-    # -----------------------------------------------------------------------------
-    # compute_read_sets()
-    #
-    # Given a set of LR(0) items, this function computes the read sets.
-    #
-    # Inputs:  C        =  Set of LR(0) items
-    #          ntrans   = Set of nonterminal transitions
-    #          nullable = Set of empty transitions
-    #
-    # Returns a set containing the read sets
-    # -----------------------------------------------------------------------------
     def compute_read_sets(self, C, ntrans, nullable):
+        """
+        Given a set of LR(0) items, this function computes the read sets.
+
+        Inputs:  C        =  Set of LR(0) items
+                 ntrans   = Set of nonterminal transitions
+                 nullable = Set of empty transitions
+
+        Returns a set containing the read sets
+        """
         FP = lambda x: self.dr_relation(C, x, nullable)
         R = lambda x: self.reads_relation(C, x, nullable)
         F = digraph(ntrans, R, FP)
         return F
 
-    # -----------------------------------------------------------------------------
-    # compute_follow_sets()
-    #
-    # Given a set of LR(0) items, a set of non-terminal transitions, a readset,
-    # and an include set, this function computes the follow sets
-    #
-    # Follow(p,A) = Read(p,A) U U {Follow(p',B) | (p,A) INCLUDES (p',B)}
-    #
-    # Inputs:
-    #            ntrans     = Set of nonterminal transitions
-    #            readsets   = Readset (previously computed)
-    #            inclsets   = Include sets (previously computed)
-    #
-    # Returns a set containing the follow sets
-    # -----------------------------------------------------------------------------
     def compute_follow_sets(self, ntrans, readsets, inclsets):
+        """
+        Given a set of LR(0) items, a set of non-terminal transitions, a readset,
+        and an include set, this function computes the follow sets
+
+        Follow(p,A) = Read(p,A) U U {Follow(p',B) | (p,A) INCLUDES (p',B)}
+
+        Inputs:
+                   ntrans     = Set of nonterminal transitions
+                   readsets   = Readset (previously computed)
+                   inclsets   = Include sets (previously computed)
+
+        Returns a set containing the follow sets
+        """
         FP = lambda x: readsets[x]
         R = lambda x: inclsets.get(x, [])
         F = digraph(ntrans, R, FP)
@@ -2692,12 +2673,10 @@ del _lr_goto_items
         except IOError as e:
             raise
 
-    # -----------------------------------------------------------------------------
-    # pickle_table()
-    #
-    # This function pickles the LR parsing tables to a supplied file object
-    # -----------------------------------------------------------------------------
     def pickle_table(self, filename, signature=''):
+        """
+        This function pickles the LR parsing tables to a supplied file object
+        """
         try:
             import cPickle as pickle
         except ImportError:
@@ -2792,16 +2771,16 @@ class ParserReflect(object):
         else:
             self.log = log
 
-    # Get all of the basic information
     def get_all(self):
+        """ Get all of the basic information. """
         self.get_start()
         self.get_error_func()
         self.get_tokens()
         self.get_precedence()
         self.get_pfunctions()
 
-    # Validate all of the information
     def validate_all(self):
+        """ Validate all of the information. """
         self.validate_start()
         self.validate_error_func()
         self.validate_tokens()
@@ -2810,8 +2789,8 @@ class ParserReflect(object):
         self.validate_modules()
         return self.error
 
-    # Compute a signature over the grammar
     def signature(self):
+        """ Compute a signature over the grammar. """
         try:
             from hashlib import md5
         except ImportError:
@@ -2835,18 +2814,15 @@ class ParserReflect(object):
             digest = digest.decode('latin-1')
         return digest
 
-    # -----------------------------------------------------------------------------
-    # validate_modules()
-    #
-    # This method checks to see if there are duplicated p_rulename() functions
-    # in the parser module file.  Without this function, it is really easy for
-    # users to make mistakes by cutting and pasting code fragments (and it's a real
-    # bugger to try and figure out why the resulting parser doesn't work).  Therefore,
-    # we just do a little regular expression pattern matching of def statements
-    # to try and detect duplicates.
-    # -----------------------------------------------------------------------------
     def validate_modules(self):
-        # Match def p_funcname(
+        """
+        This method checks to see if there are duplicated p_rulename() functions
+        in the parser module file.  Without this function, it is really easy for
+        users to make mistakes by cutting and pasting code fragments (and it's a real
+        bugger to try and figure out why the resulting parser doesn't work).  Therefore,
+        we just do a little regular expression pattern matching of def statements
+        to try and detect duplicates.
+        """
         fre = re.compile(r'\s*def\s+(p_[a-zA-Z_0-9]*)\(')
 
         for module in self.modules:
@@ -2866,22 +2842,22 @@ class ParserReflect(object):
                         self.log.warning('%s:%d: Function %s redefined. Previously defined on line %d',
                                          filename, linen, name, prev)
 
-    # Get the start symbol
     def get_start(self):
+        """ Get the start symbol. """
         self.start = self.pdict.get('start')
 
-    # Validate the start symbol
     def validate_start(self):
+        """ Validate the start symbol. """
         if self.start is not None:
             if not isinstance(self.start, string_types):
                 self.log.error("'start' must be a string")
 
-    # Look for error handler
     def get_error_func(self):
+        """ Look for error handler. """
         self.error_func = self.pdict.get('p_error')
 
-    # Validate the error function
     def validate_error_func(self):
+        """ Validate the error function. """
         if self.error_func:
             if isinstance(self.error_func, types.FunctionType):
                 ismethod = 0
@@ -2902,8 +2878,8 @@ class ParserReflect(object):
                 self.log.error('%s:%d: p_error() requires 1 argument', efile, eline)
                 self.error = True
 
-    # Get the tokens map
     def get_tokens(self):
+        """ Get the tokens map. """
         tokens = self.pdict.get('tokens')
         if not tokens:
             self.log.error('No token list is defined')
@@ -2922,8 +2898,8 @@ class ParserReflect(object):
 
         self.tokens = tokens
 
-    # Validate the tokens
     def validate_tokens(self):
+        """ Validate the tokens. """
         # Validate the tokens.
         if 'error' in self.tokens:
             self.log.error("Illegal token name 'error'. Is a reserved word")
@@ -2936,12 +2912,12 @@ class ParserReflect(object):
                 self.log.warning('Token %r multiply defined', n)
             terminals.add(n)
 
-    # Get the precedence map (if any)
     def get_precedence(self):
+        """ Get the precedence map (if any). """
         self.prec = self.pdict.get('precedence')
 
-    # Validate and parse the precedence map
     def validate_precedence(self):
+        """ Validate and parse the precedence map. """
         preclist = []
         if self.prec:
             if not isinstance(self.prec, (list, tuple)):
@@ -2971,8 +2947,8 @@ class ParserReflect(object):
                     preclist.append((term, assoc, level + 1))
         self.preclist = preclist
 
-    # Get all p_functions from the grammar
     def get_pfunctions(self):
+        """ Get all p_functions from the grammar. """
         p_functions = []
         for name, item in self.pdict.items():
             if not name.startswith('p_') or name == 'p_error':
@@ -2986,8 +2962,8 @@ class ParserReflect(object):
         p_functions.sort()
         self.pfuncs = p_functions
 
-    # Validate all of the p_functions
     def validate_pfunctions(self):
+        """ Validate all of the p_functions. """
         grammar = []
         # Check for non-empty symbols
         if len(self.pfuncs) == 0:
