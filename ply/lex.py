@@ -65,6 +65,13 @@ class LexError(Exception):
 
 class LexToken(object):
     """ Token class.  This class is used to represent the tokens produced. """
+
+    def __init__(self, type="", value=None, lineno=-1, lexpos=-1):
+        self.type = type
+        self.value = value
+        self.lineno = lineno
+        self.lexpos = lexpos
+
     def __str__(self):
         return 'LexToken(%s,%r,%d,%d)' % (self.type, self.value, self.lineno, self.lexpos)
 
@@ -304,13 +311,9 @@ class Lexer:
                     continue
 
                 # Create a token for return
-                tok = LexToken()
-                tok.value = m.group()
-                tok.lineno = self.lineno
-                tok.lexpos = lexpos
-
                 i = m.lastindex
-                func, tok.type = lexindexfunc[i]
+                tok = LexToken(lexindexfunc[i][1], m.group(), self.lineno, lexpos)
+                func, _ = lexindexfunc[i]
 
                 if not func:
                     # If no token type was set, it's an ignored token
@@ -347,22 +350,14 @@ class Lexer:
             else:
                 # No match, see if in literals
                 if lexdata[lexpos] in self.lexliterals:
-                    tok = LexToken()
-                    tok.value = lexdata[lexpos]
-                    tok.lineno = self.lineno
-                    tok.type = tok.value
-                    tok.lexpos = lexpos
+                    tok = LexToken(lexdata[lexpos], lexdata[lexpos], self.lineno, lexpos)
                     self.lexpos = lexpos + 1
                     return tok
 
                 # No match. Call t_error() if defined.
                 if self.lexerrorf:
-                    tok = LexToken()
-                    tok.value = self.lexdata[lexpos:]
-                    tok.lineno = self.lineno
-                    tok.type = 'error'
+                    tok = LexToken('error', self.lexdata[lexpos:], self.lineno, lexpos)
                     tok.lexer = self
-                    tok.lexpos = lexpos
                     self.lexpos = lexpos
                     newtok = self.lexerrorf(tok)
                     if lexpos == self.lexpos:
@@ -377,11 +372,7 @@ class Lexer:
                 raise LexError("Illegal character '%s' at index %d" % (lexdata[lexpos], lexpos), lexdata[lexpos:])
 
         if self.lexeoff:
-            tok = LexToken()
-            tok.type = 'eof'
-            tok.value = ''
-            tok.lineno = self.lineno
-            tok.lexpos = lexpos
+            tok = LexToken('eof', '', self.lineno, lexpos)
             tok.lexer = self
             self.lexpos = lexpos
             newtok = self.lexeoff(tok)

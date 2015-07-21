@@ -180,7 +180,7 @@ def track_tokens_filter(lexer, tokens):
             at_line_start = False
             indent = MAY_INDENT
             token.must_indent = False
-            
+
         elif token.type == "NEWLINE":
             at_line_start = True
             if indent == MAY_INDENT:
@@ -205,11 +205,7 @@ def track_tokens_filter(lexer, tokens):
         lexer.at_line_start = at_line_start
 
 def _new_token(type, lineno):
-    tok = lex.LexToken()
-    tok.type = type
-    tok.value = None
-    tok.lineno = lineno
-    return tok
+    return lex.LexToken(type, None, lineno)
 
 # Synthesize a DEDENT tag
 def DEDENT(lineno):
@@ -235,7 +231,7 @@ def indentation_filter(tokens):
 ##            if token.must_indent:
 ##                print "must_indent",
 ##            print
-                
+
         # WS only occurs at the start of the line
         # There may be WS followed by NEWLINE so
         # only track the depth here.  Don't indent/dedent
@@ -294,7 +290,7 @@ def indentation_filter(tokens):
         assert token is not None
         for _ in range(1, len(levels)):
             yield DEDENT(token.lineno)
-    
+
 
 # The top-level filter adds an ENDMARKER, if requested.
 # Python's grammar uses it.
@@ -376,14 +372,14 @@ def p_file_input(p):
             p[0] = p[1] + p[2]
         else:
             p[0] = p[1]
-            
+
 
 # funcdef: [decorators] 'def' NAME parameters ':' suite
 # ignoring decorators
 def p_funcdef(p):
     "funcdef : DEF NAME parameters COLON suite"
     p[0] = ast.Function(None, p[2], tuple(p[3]), (), 0, None, p[5])
-    
+
 # parameters: '(' [varargslist] ')'
 def p_parameters(p):
     """parameters : LPAR RPAR
@@ -392,9 +388,9 @@ def p_parameters(p):
         p[0] = []
     else:
         p[0] = p[2]
-    
 
-# varargslist: (fpdef ['=' test] ',')* ('*' NAME [',' '**' NAME] | '**' NAME) | 
+
+# varargslist: (fpdef ['=' test] ',')* ('*' NAME [',' '**' NAME] | '**' NAME) |
 # highly simplified
 def p_varargslist(p):
     """varargslist : varargslist COMMA NAME
@@ -409,7 +405,7 @@ def p_stmt_simple(p):
     """stmt : simple_stmt"""
     # simple_stmt is a list
     p[0] = p[1]
-    
+
 def p_stmt_compound(p):
     """stmt : compound_stmt"""
     p[0] = [p[1]]
@@ -474,7 +470,7 @@ def p_suite(p):
         p[0] = ast.Stmt(p[1])
     else:
         p[0] = ast.Stmt(p[3])
-    
+
 
 def p_stmts(p):
     """stmts : stmts stmt
@@ -536,7 +532,7 @@ def p_comparison(p):
         p[0] = unary_ops[p[1]](p[2])
     else:
         p[0] = p[1]
-                  
+
 # power: atom trailer* ['**' factor]
 # trailers enables function calls.  I only allow one level of calls
 # so this is 'trailer'
@@ -605,7 +601,7 @@ def p_testlist_multi(p):
 def p_test(p):
     "test : comparison"
     p[0] = p[1]
-    
+
 
 
 # arglist: (argument ',')* (argument [',']| '*' test [',' '**' test] | '**' test)
@@ -642,7 +638,7 @@ class GardenSnakeParser(object):
 
 
 ###### Code generation ######
-    
+
 from compiler import misc, syntax, pycodegen
 
 class GardenSnakeCompiler(object):
@@ -658,13 +654,13 @@ class GardenSnakeCompiler(object):
         return code
 
 ####### Test code #######
-    
+
 compile = GardenSnakeCompiler().compile
 
 code = r"""
 
 print('LET\'S TRY THIS \\OUT')
-  
+
 #Comment here
 def x(a):
     print('called with',a)
