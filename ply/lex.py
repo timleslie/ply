@@ -40,6 +40,7 @@ import types
 import copy
 import os
 import inspect
+from collections import namedtuple
 
 # This tuple contains known string types
 try:
@@ -110,6 +111,13 @@ class NullLogger(object):
         return self
 
 
+# Master regular expression. This is a list of tuples (re, findex) where re is a compiled regular expression and findex is a list mapping regex group numbers to rules
+# Current regular expression strings
+# Ignored characters
+# Error rule (if any)
+# EOF rule (if any)
+LexState = namedtuple('LexState', ['re', 'retext', 'ignore', 'errorf', 'eoff'])
+
 class Lexer:
     """
     The Lexer class implements the lexer runtime.   There are only
@@ -123,17 +131,14 @@ class Lexer:
        lexpos           -  Current position in the input string
     """
     def __init__(self):
-        self.lexre = None          # Master regular expression. This is a list of tuples (re, findex) where re is a compiled regular expression and findex is a list mapping regex group numbers to rules
-        self.lexretext = None      # Current regular expression strings
-        self.lexignore = ''        # Ignored characters
-        self.lexerrorf = None      # Error rule (if any)
-        self.lexeoff = None        # EOF rule (if any)
+        self._state = LexState(None, None, '', None, None)
 
         self.lexstatere = {}       # Dictionary mapping lexer states to master regexs
         self.lexstateretext = {}   # Dictionary mapping lexer states to regex strings
         self.lexstateignore = {}   # Dictionary of ignored characters for each state
         self.lexstateerrorf = {}   # Dictionary of error functions for each state
         self.lexstateeoff = {}     # Dictionary of eof functions for each state
+        self._states = {}
 
         self.lexstaterenames = {}  # Dictionary mapping lexer states to symbol names
         self.lexstate = 'INITIAL'  # Current lexer state
@@ -247,6 +252,14 @@ class Lexer:
         for statename, ef in lextab._lexstateeoff.items():
             self.lexstateeoff[statename] = fdict[ef]
 
+        for statename in self.lexstatere:
+            re_ = self.lexstatere[statename]
+            retext = self.lexstateretext[statename]
+            ignore = self.lexstateignore.get(statename, '')
+            errorf = self.lexstateerrorf.get(statename, None)
+            eoff = self.lexstateeoff.get(statename, None)
+            self._states[statename] = LexState(re_, retext, ignore, errorf, eoff)
+
         self.begin('INITIAL')
 
     def input(self, s):
@@ -261,14 +274,14 @@ class Lexer:
 
     def begin(self, state):
         """ Changes the lexing state. """
-        if state not in self.lexstatere:
-            raise ValueError('Undefined state')
-        self.lexre = self.lexstatere[state]
-        self.lexretext = self.lexstateretext[state]
-        self.lexignore = self.lexstateignore.get(state, '')
-        self.lexerrorf = self.lexstateerrorf.get(state, None)
-        self.lexeoff = self.lexstateeoff.get(state, None)
+        lexre = self.lexstatere[state]
+        lexretext = self.lexstateretext[state]
+        lexignore = self.lexstateignore.get(state, '')
+        lexerrorf = self.lexstateerrorf.get(state, None)
+        lexeoff = self.lexstateeoff.get(state, None)
         self.lexstate = state
+
+        self._state = LexState(lexre, lexretext, lexignore, lexerrorf, lexeoff)
 
     def push_state(self, state):
         """ Changes the lexing state and saves old on stack. """
@@ -298,7 +311,7 @@ class Lexer:
         # Make local copies of frequently referenced attributes
         lexpos = self.lexpos
         lexlen = self.lexlen
-        lexignore = self.lexignore
+        lexignore = self._state.ignore
         lexdata = self.lexdata
 
         while lexpos < lexlen:
@@ -308,7 +321,7 @@ class Lexer:
                 continue
 
             # Look for a regular expression match
-            for lexre, lexindexfunc in self.lexre:
+            for lexre, lexindexfunc in self._state.re:
                 m = lexre.match(lexdata, lexpos)
                 if not m:
                     continue
@@ -339,7 +352,7 @@ class Lexer:
                 # Every function must return a token, if nothing, we just move to next token
                 if not newtok:
                     lexpos = self.lexpos         # This is here in case user has updated lexpos.
-                    lexignore = self.lexignore      # This is here in case there was a state change
+                    lexignore = self._state.ignore      # This is here in case there was a state change
                     break
 
                 # Verify type of the token.  If not in the token map, raise an error
@@ -358,11 +371,11 @@ class Lexer:
                     return tok
 
                 # No match. Call t_error() if defined.
-                if self.lexerrorf:
+                if self._state.errorf:
                     tok = LexToken('error', self.lexdata[lexpos:], self.lineno, lexpos)
                     tok.lexer = self
                     self.lexpos = lexpos
-                    newtok = self.lexerrorf(tok)
+                    newtok = self._state.errorf(tok)
                     if lexpos == self.lexpos:
                         # Error method didn't change text position at all. This is an error.
                         raise LexError("Scanning error. Illegal character '%s'" % (lexdata[lexpos]), lexdata[lexpos:])
@@ -374,11 +387,11 @@ class Lexer:
                 self.lexpos = lexpos
                 raise LexError("Illegal character '%s' at index %d" % (lexdata[lexpos], lexpos), lexdata[lexpos:])
 
-        if self.lexeoff:
+        if self._state.eoff:
             tok = LexToken('eof', '', self.lineno, lexpos)
             tok.lexer = self
             self.lexpos = lexpos
-            newtok = self.lexeoff(tok)
+            newtok = self._state.eoff(tok)
             return newtok
 
         self.lexpos = lexpos + 1
@@ -827,7 +840,6 @@ def lex(module=None, object=None, debug=False, optimize=False, lextab='lextab',
 
     global lexer
 
-    ldict = None
     stateinfo = {'INITIAL': 'inclusive'}
     lexobj = Lexer()
     lexobj.lexoptimize = optimize
@@ -943,30 +955,33 @@ def lex(module=None, object=None, debug=False, optimize=False, lextab='lextab',
             lexobj.lexstaterenames[state].extend(lexobj.lexstaterenames['INITIAL'])
 
     lexobj.lexstateinfo = stateinfo
-    lexobj.lexre = lexobj.lexstatere['INITIAL']
-    lexobj.lexretext = lexobj.lexstateretext['INITIAL']
+    lexre = lexobj.lexstatere['INITIAL']
+    lexretext = lexobj.lexstateretext['INITIAL']
     lexobj.lexreflags = reflags
 
     # Set up ignore variables
     lexobj.lexstateignore = linfo.ignore
-    lexobj.lexignore = lexobj.lexstateignore.get('INITIAL', '')
+    lexignore = lexobj.lexstateignore.get('INITIAL', '')
 
     # Set up error functions
     lexobj.lexstateerrorf = linfo.errorf
-    lexobj.lexerrorf = linfo.errorf.get('INITIAL', None)
-    if not lexobj.lexerrorf:
-        errorlog.warning('No t_error rule is defined')
+    lexerrorf = linfo.errorf.get('INITIAL', None)
 
     # Set up eof functions
     lexobj.lexstateeoff = linfo.eoff
-    lexobj.lexeoff = linfo.eoff.get('INITIAL', None)
+    lexeoff = linfo.eoff.get('INITIAL', None)
+
+    lexobj._state = LexState(lexre, lexretext, lexignore, lexerrorf, lexeoff)
+
+    if not lexobj._state.errorf:
+        errorlog.warning('No t_error rule is defined')
 
     # Check state information for ignore and error rules
     for s, stype in stateinfo.items():
         if stype == 'exclusive':
             if s not in linfo.errorf:
                 errorlog.warning("No error rule is defined for exclusive state '%s'", s)
-            if s not in linfo.ignore and lexobj.lexignore:
+            if s not in linfo.ignore and lexobj._state.ignore:
                 errorlog.warning("No ignore rule is defined for exclusive state '%s'", s)
         elif stype == 'inclusive':
             if s not in linfo.errorf:
