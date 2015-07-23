@@ -66,11 +66,12 @@ class LexError(Exception):
 class LexToken(object):
     """ Token class.  This class is used to represent the tokens produced. """
 
-    def __init__(self, type="", value=None, lineno=-1, lexpos=-1):
+    def __init__(self, type="", value=None, lineno=-1, lexpos=-1, lexer=None):
         self.type = type
         self.value = value
         self.lineno = lineno
         self.lexpos = lexpos
+        self.lexer = lexer
 
     def __str__(self):
         return 'LexToken(%s,%r,%d,%d)' % (self.type, self.value, self.lineno, self.lexpos)
@@ -124,23 +125,25 @@ class Lexer:
     def __init__(self):
         self.lexre = None          # Master regular expression. This is a list of tuples (re, findex) where re is a compiled regular expression and findex is a list mapping regex group numbers to rules
         self.lexretext = None      # Current regular expression strings
+        self.lexignore = ''        # Ignored characters
+        self.lexerrorf = None      # Error rule (if any)
+        self.lexeoff = None        # EOF rule (if any)
+
         self.lexstatere = {}       # Dictionary mapping lexer states to master regexs
         self.lexstateretext = {}   # Dictionary mapping lexer states to regex strings
+        self.lexstateignore = {}   # Dictionary of ignored characters for each state
+        self.lexstateerrorf = {}   # Dictionary of error functions for each state
+        self.lexstateeoff = {}     # Dictionary of eof functions for each state
+
         self.lexstaterenames = {}  # Dictionary mapping lexer states to symbol names
         self.lexstate = 'INITIAL'  # Current lexer state
         self.lexstatestack = []    # Stack of lexer states
         self.lexstateinfo = None   # State information
-        self.lexstateignore = {}   # Dictionary of ignored characters for each state
-        self.lexstateerrorf = {}   # Dictionary of error functions for each state
-        self.lexstateeoff = {}     # Dictionary of eof functions for each state
         self.lexreflags = 0        # Optional re compile flags
         self.lexdata = None        # Actual input data (as a string)
         self.lexpos = 0            # Current position in input text
         self.lexlen = 0            # Length of the input text
-        self.lexerrorf = None      # Error rule (if any)
-        self.lexeoff = None        # EOF rule (if any)
         self.lextokens = None      # List of valid tokens
-        self.lexignore = ''        # Ignored characters
         self.lexliterals = ''      # Literal characters that can be passed through
         self.lexmodule = None      # Module
         self.lineno = 1            # Current line number
@@ -257,7 +260,7 @@ class Lexer:
         self.lexlen = len(s)
 
     def begin(self, state):
-        """ Push a new string into the lexer. """
+        """ Changes the lexing state. """
         if state not in self.lexstatere:
             raise ValueError('Undefined state')
         self.lexre = self.lexstatere[state]
@@ -268,20 +271,20 @@ class Lexer:
         self.lexstate = state
 
     def push_state(self, state):
-        """ Push a new string into the lexer. """
+        """ Changes the lexing state and saves old on stack. """
         self.lexstatestack.append(self.lexstate)
         self.begin(state)
 
     def pop_state(self):
-        """ Push a new string into the lexer. """
+        """ Restores the previous state. """
         self.begin(self.lexstatestack.pop())
 
     def current_state(self):
-        """ Push a new string into the lexer. """
+        """ Returns the current lexing state. """
         return self.lexstate
 
     def skip(self, n):
-        """ Push a new string into the lexer. """
+        """ Skip ahead n characters. """
         self.lexpos += n
 
     def token(self):
