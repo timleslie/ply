@@ -133,11 +133,6 @@ class Lexer:
     def __init__(self):
         self._state = LexState(None, None, '', None, None)
 
-        self.lexstatere = {}       # Dictionary mapping lexer states to master regexs
-        self.lexstateretext = {}   # Dictionary mapping lexer states to regex strings
-        self.lexstateignore = {}   # Dictionary of ignored characters for each state
-        self.lexstateerrorf = {}   # Dictionary of error functions for each state
-        self.lexstateeoff = {}     # Dictionary of eof functions for each state
         self._states = {}
 
         self.lexstaterenames = {}  # Dictionary mapping lexer states to symbol names
@@ -163,7 +158,10 @@ class Lexer:
 
         if object:
             newtab = {}
-            for key, ritem in self.lexstatere.items():
+
+            new_states = {}
+            for statename, state in self._states.items():
+                re = state.re
                 newre = []
                 for cre, findex in ritem:
                     newfindex = []
@@ -173,11 +171,10 @@ class Lexer:
                             continue
                         newfindex.append((getattr(object, f[0].__name__), f[1]))
                 newre.append((cre, newfindex))
-                newtab[key] = newre
-            c.lexstatere = newtab
-            c.lexstateerrorf = {}
-            for key, ef in self.lexstateerrorf.items():
-                c.lexstateerrorf[key] = getattr(object, ef.__name__)
+                errorf = getattr(object, state.errorf.__name__)
+                new_states[state] = LexState(newre, state.retext, state.ignore, errorf, state.eoff)
+            c._states = new_states
+
             c.lexmodule = object
         return c
 
@@ -197,22 +194,24 @@ class Lexer:
 
             # Rewrite the lexstatere table, replacing function objects with function names
             tabre = {}
-            for statename, lre in self.lexstatere.items():
+            for statename, state in self._states.items():
                 titem = []
-                for (pat, func), retext, renames in zip(lre, self.lexstateretext[statename], self.lexstaterenames[statename]):
+                for (pat, func), retext, renames in zip(state.re, state.retext, self.lexstaterenames[statename]):
                     titem.append((retext, _funcs_to_names(func, renames)))
                 tabre[statename] = titem
 
             tf.write('_lexstatere   = %s\n' % repr(tabre))
-            tf.write('_lexstateignore = %s\n' % repr(self.lexstateignore))
+            tf.write('_lexstateignore = %s\n' % repr({statename: state.ignore for statename, state in self._states.items()}))
 
             taberr = {}
-            for statename, ef in self.lexstateerrorf.items():
+            for statename, state in self._states.items():
+                ef = state.errorf
                 taberr[statename] = ef.__name__ if ef else None
             tf.write('_lexstateerrorf = %s\n' % repr(taberr))
 
             tabeof = {}
-            for statename, ef in self.lexstateeoff.items():
+            for statename, state in self._states.items():
+                ef = state.eoff
                 tabeof[statename] = ef.__name__ if ef else None
             tf.write('_lexstateeoff = %s\n' % repr(tabeof))
 
@@ -232,32 +231,32 @@ class Lexer:
         self.lexliterals = lextab._lexliterals
         self.lextokens_all = self.lextokens | set(self.lexliterals)
         self.lexstateinfo = lextab._lexstateinfo
-        self.lexstateignore = lextab._lexstateignore
-        self.lexstatere = {}
-        self.lexstateretext = {}
+        lexstateignore = lextab._lexstateignore
+        lexstatere = {}
+        lexstateretext = {}
         for statename, lre in lextab._lexstatere.items():
             titem = []
             txtitem = []
             for pat, func_name in lre:
                 titem.append((re.compile(pat, lextab._lexreflags | re.VERBOSE), _names_to_funcs(func_name, fdict)))
 
-            self.lexstatere[statename] = titem
-            self.lexstateretext[statename] = txtitem
+            lexstatere[statename] = titem
+            lexstateretext[statename] = txtitem
 
-        self.lexstateerrorf = {}
+        lexstateerrorf = {}
         for statename, ef in lextab._lexstateerrorf.items():
-            self.lexstateerrorf[statename] = fdict[ef]
+            lexstateerrorf[statename] = fdict.get(ef, None)
 
-        self.lexstateeoff = {}
+        lexstateeoff = {}
         for statename, ef in lextab._lexstateeoff.items():
-            self.lexstateeoff[statename] = fdict[ef]
+            lexstateeoff[statename] = fdict.get(ef, None)
 
-        for statename in self.lexstatere:
-            re_ = self.lexstatere[statename]
-            retext = self.lexstateretext[statename]
-            ignore = self.lexstateignore.get(statename, '')
-            errorf = self.lexstateerrorf.get(statename, None)
-            eoff = self.lexstateeoff.get(statename, None)
+        for statename in lextab._lexstatere:
+            re_ = lexstatere[statename]
+            retext = lexstateretext[statename]
+            ignore = lexstateignore.get(statename, '')
+            errorf = lexstateerrorf.get(statename, None)
+            eoff = lexstateeoff.get(statename, None)
             self._states[statename] = LexState(re_, retext, ignore, errorf, eoff)
 
         self.begin('INITIAL')
@@ -274,14 +273,8 @@ class Lexer:
 
     def begin(self, state):
         """ Changes the lexing state. """
-        lexre = self.lexstatere[state]
-        lexretext = self.lexstateretext[state]
-        lexignore = self.lexstateignore.get(state, '')
-        lexerrorf = self.lexstateerrorf.get(state, None)
-        lexeoff = self.lexstateeoff.get(state, None)
         self.lexstate = state
-
-        self._state = LexState(lexre, lexretext, lexignore, lexerrorf, lexeoff)
+        self._state = self._states[state]
 
     def push_state(self, state):
         """ Changes the lexing state and saves old on stack. """
@@ -840,7 +833,6 @@ def lex(module=None, object=None, debug=False, optimize=False, lextab='lextab',
 
     global lexer
 
-    stateinfo = {'INITIAL': 'inclusive'}
     lexobj = Lexer()
     lexobj.lexoptimize = optimize
     global token, input
@@ -938,44 +930,6 @@ def lex(module=None, object=None, debug=False, optimize=False, lextab='lextab',
     if debug:
         debuglog.info('lex: ==== MASTER REGEXS FOLLOW ====')
 
-    for state in regexs:
-        lexre, re_text, re_names = _form_master_re(regexs[state], reflags, ldict, linfo.toknames)
-        lexobj.lexstatere[state] = lexre
-        lexobj.lexstateretext[state] = re_text
-        lexobj.lexstaterenames[state] = re_names
-        if debug:
-            for i, text in enumerate(re_text):
-                debuglog.info("lex: state '%s' : regex[%d] = '%s'", state, i, text)
-
-    # For inclusive states, we need to add the regular expressions from the INITIAL state
-    for state, stype in stateinfo.items():
-        if state != 'INITIAL' and stype == 'inclusive':
-            lexobj.lexstatere[state].extend(lexobj.lexstatere['INITIAL'])
-            lexobj.lexstateretext[state].extend(lexobj.lexstateretext['INITIAL'])
-            lexobj.lexstaterenames[state].extend(lexobj.lexstaterenames['INITIAL'])
-
-    lexobj.lexstateinfo = stateinfo
-    lexre = lexobj.lexstatere['INITIAL']
-    lexretext = lexobj.lexstateretext['INITIAL']
-    lexobj.lexreflags = reflags
-
-    # Set up ignore variables
-    lexobj.lexstateignore = linfo.ignore
-    lexignore = lexobj.lexstateignore.get('INITIAL', '')
-
-    # Set up error functions
-    lexobj.lexstateerrorf = linfo.errorf
-    lexerrorf = linfo.errorf.get('INITIAL', None)
-
-    # Set up eof functions
-    lexobj.lexstateeoff = linfo.eoff
-    lexeoff = linfo.eoff.get('INITIAL', None)
-
-    lexobj._state = LexState(lexre, lexretext, lexignore, lexerrorf, lexeoff)
-
-    if not lexobj._state.errorf:
-        errorlog.warning('No t_error rule is defined')
-
     # Check state information for ignore and error rules
     for s, stype in stateinfo.items():
         if stype == 'exclusive':
@@ -988,6 +942,29 @@ def lex(module=None, object=None, debug=False, optimize=False, lextab='lextab',
                 linfo.errorf[s] = linfo.errorf.get('INITIAL', None)
             if s not in linfo.ignore:
                 linfo.ignore[s] = linfo.ignore.get('INITIAL', '')
+
+    for state in regexs:
+        lexre, re_text, re_names = _form_master_re(regexs[state], reflags, ldict, linfo.toknames)
+        lexobj.lexstaterenames[state] = re_names
+        if debug:
+            for i, text in enumerate(re_text):
+                debuglog.info("lex: state '%s' : regex[%d] = '%s'", state, i, text)
+        # print "SET UP", state, "-%s-" % linfo.ignore.get(state, '')
+        lexobj._states[state] = LexState(lexre, re_text, linfo.ignore.get(state, ''), linfo.errorf.get(state, None), linfo.eoff.get(state, None))
+
+    # For inclusive states, we need to add the regular expressions from the INITIAL state
+    for state, stype in stateinfo.items():
+        if state != 'INITIAL' and stype == 'inclusive':
+            lexobj._states[state].re.extend(lexobj._states['INITIAL'].re)
+            lexobj._states[state].retext.extend(lexobj._states['INITIAL'].retext)
+            lexobj.lexstaterenames[state].extend(lexobj.lexstaterenames['INITIAL'])
+
+    lexobj.lexstateinfo = stateinfo
+    lexobj.lexreflags = reflags
+    lexobj._state = LexState(lexobj._states['INITIAL'].re, lexobj._states['INITIAL'].retext, linfo.ignore.get('INITIAL', ''), linfo.errorf.get('INITIAL', None), linfo.eoff.get('INITIAL', None))
+
+    if not lexobj._state.errorf:
+        errorlog.warning('No t_error rule is defined')
 
     # Create global versions of the token() and input() functions
     token = lexobj.token
