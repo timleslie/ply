@@ -132,11 +132,10 @@ class Lexer:
     """
     def __init__(self):
         self._state = LexState(None, None, '', None, None)
-
         self._states = {}
 
         self.lexstaterenames = {}  # Dictionary mapping lexer states to symbol names
-        self.lexstate = 'INITIAL'  # Current lexer state
+        self.lexstate = None       # Current lexer state
         self.lexstatestack = []    # Stack of lexer states
         self.lexstateinfo = None   # State information
         self.lexreflags = 0        # Optional re compile flags
@@ -204,19 +203,17 @@ class Lexer:
             tf.write('_lexstateignore = %s\n' % repr({statename: state.ignore for statename, state in self._states.items()}))
 
             taberr = {}
-            for statename, state in self._states.items():
-                ef = state.errorf
-                taberr[statename] = ef.__name__ if ef else None
-            tf.write('_lexstateerrorf = %s\n' % repr(taberr))
-
             tabeof = {}
             for statename, state in self._states.items():
-                ef = state.eoff
-                tabeof[statename] = ef.__name__ if ef else None
+                errorf = state.errorf
+                eoff = state.eoff
+                taberr[statename] = errorf.__name__ if errorf else None
+                tabeof[statename] = eoff.__name__ if eoff else None
+            tf.write('_lexstateerrorf = %s\n' % repr(taberr))
             tf.write('_lexstateeoff = %s\n' % repr(tabeof))
 
     def readtab(self, tabfile, fdict):
-        """ Write lexer information to a table file. """
+        """ Read lexer information from a tab file """
         if isinstance(tabfile, types.ModuleType):
             lextab = tabfile
         else:
@@ -619,7 +616,7 @@ class LexerReflect(object):
                         self.log.error('State name %s must be a string', repr(name))
                         self.error = True
                         continue
-                    if not (statetype == 'inclusive' or statetype == 'exclusive'):
+                    if statetype not in ('inclusive', 'exclusive'):
                         self.log.error("State type for state %s must be 'inclusive' or 'exclusive'", name)
                         self.error = True
                         continue
@@ -833,8 +830,7 @@ def lex(module=None, object=None, debug=False, optimize=False, lextab='lextab',
 
     global lexer
 
-    lexobj = Lexer()
-    lexobj.lexoptimize = optimize
+
     global token, input
 
     if errorlog is None:
@@ -873,6 +869,8 @@ def lex(module=None, object=None, debug=False, optimize=False, lextab='lextab',
 
     if optimize and lextab:
         try:
+            lexobj = Lexer()
+            lexobj.lexoptimize = optimize
             lexobj.readtab(lextab, ldict)
             token = lexobj.token
             input = lexobj.input
@@ -888,25 +886,22 @@ def lex(module=None, object=None, debug=False, optimize=False, lextab='lextab',
         debuglog.info('lex: literals = %r', linfo.literals)
         debuglog.info('lex: states   = %r', linfo.stateinfo)
 
-    # Build a dictionary of valid token names
-    lexobj.lextokens = set()
-    for n in linfo.tokens:
-        lexobj.lextokens.add(n)
-
-    # Get literals specification
-    if isinstance(linfo.literals, (list, tuple)):
-        lexobj.lexliterals = type(linfo.literals[0])().join(linfo.literals)
-    else:
-        lexobj.lexliterals = linfo.literals
-
-    lexobj.lextokens_all = lexobj.lextokens | set(lexobj.lexliterals)
-
-    # Get the stateinfo dictionary
-    stateinfo = linfo.stateinfo
+    # Check state information for ignore and error rules
+    for s, stype in linfo.stateinfo.items():
+        if stype == 'exclusive':
+            if s not in linfo.errorf:
+                errorlog.warning("No error rule is defined for exclusive state '%s'", s)
+            if s not in linfo.ignore and linfo.ignore.get('INITIAL', ''):
+                errorlog.warning("No ignore rule is defined for exclusive state '%s'", s)
+        elif stype == 'inclusive':
+            if s not in linfo.errorf:
+                linfo.errorf[s] = linfo.errorf.get('INITIAL', None)
+            if s not in linfo.ignore:
+                linfo.ignore[s] = linfo.ignore.get('INITIAL', '')
 
     regexs = {}
     # Build the master regular expressions
-    for state in stateinfo:
+    for state in linfo.stateinfo:
         regex_list = []
 
         # Add rules defined by functions first
@@ -927,21 +922,18 @@ def lex(module=None, object=None, debug=False, optimize=False, lextab='lextab',
 
     # Build the master regular expressions
 
+    lexobj = Lexer()
+    lexobj.lexoptimize = optimize
+
+    lexobj.lextokens = set(linfo.tokens)
+    if isinstance(linfo.literals, (list, tuple)):
+        lexobj.lexliterals = type(linfo.literals[0])().join(linfo.literals)
+    else:
+        lexobj.lexliterals = linfo.literals
+    lexobj.lextokens_all = lexobj.lextokens | set(lexobj.lexliterals)
+
     if debug:
         debuglog.info('lex: ==== MASTER REGEXS FOLLOW ====')
-
-    # Check state information for ignore and error rules
-    for s, stype in stateinfo.items():
-        if stype == 'exclusive':
-            if s not in linfo.errorf:
-                errorlog.warning("No error rule is defined for exclusive state '%s'", s)
-            if s not in linfo.ignore and lexobj._state.ignore:
-                errorlog.warning("No ignore rule is defined for exclusive state '%s'", s)
-        elif stype == 'inclusive':
-            if s not in linfo.errorf:
-                linfo.errorf[s] = linfo.errorf.get('INITIAL', None)
-            if s not in linfo.ignore:
-                linfo.ignore[s] = linfo.ignore.get('INITIAL', '')
 
     for state in regexs:
         lexre, re_text, re_names = _form_master_re(regexs[state], reflags, ldict, linfo.toknames)
@@ -949,19 +941,18 @@ def lex(module=None, object=None, debug=False, optimize=False, lextab='lextab',
         if debug:
             for i, text in enumerate(re_text):
                 debuglog.info("lex: state '%s' : regex[%d] = '%s'", state, i, text)
-        # print "SET UP", state, "-%s-" % linfo.ignore.get(state, '')
         lexobj._states[state] = LexState(lexre, re_text, linfo.ignore.get(state, ''), linfo.errorf.get(state, None), linfo.eoff.get(state, None))
 
     # For inclusive states, we need to add the regular expressions from the INITIAL state
-    for state, stype in stateinfo.items():
+    for state, stype in linfo.stateinfo.items():
         if state != 'INITIAL' and stype == 'inclusive':
             lexobj._states[state].re.extend(lexobj._states['INITIAL'].re)
             lexobj._states[state].retext.extend(lexobj._states['INITIAL'].retext)
             lexobj.lexstaterenames[state].extend(lexobj.lexstaterenames['INITIAL'])
 
-    lexobj.lexstateinfo = stateinfo
+    lexobj.lexstateinfo = linfo.stateinfo
     lexobj.lexreflags = reflags
-    lexobj._state = LexState(lexobj._states['INITIAL'].re, lexobj._states['INITIAL'].retext, linfo.ignore.get('INITIAL', ''), linfo.errorf.get('INITIAL', None), linfo.eoff.get('INITIAL', None))
+    lexobj.begin('INITIAL')
 
     if not lexobj._state.errorf:
         errorlog.warning('No t_error rule is defined')
