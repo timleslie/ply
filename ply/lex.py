@@ -520,12 +520,12 @@ def _statetoken(s, names):
     return (states, tokenname)
 
 
-class LexerReflect(object):
+class _LexerReflect(object):
     """
     This class represents information needed to build a lexer as extracted from a
     user's input file.
     """
-    def __init__(self, ldict, log=None, reflags=0):
+    def __init__(self, ldict, log=None, reflags=0, optimize=False, debug=False, debuglog=None, errorlog=None):
         self.ldict = ldict
         self.error_func = None
         self.tokens = []
@@ -534,23 +534,46 @@ class LexerReflect(object):
         self.modules = set()
         self.error = False
         self.log = PlyLogger(sys.stderr) if log is None else log
+        self._get_all()
+        if not optimize:
+            if self._validate_all():
+                raise SyntaxError("Can't build lexer")
+
+        # Dump some basic debugging information
+        if debug:
+            debuglog.info('lex: tokens   = %r', self.tokens)
+            debuglog.info('lex: literals = %r', self.literals)
+            debuglog.info('lex: states   = %r', self.stateinfo)
+
+        # Check state information for ignore and error rules
+        for s, stype in self.stateinfo.items():
+            if stype == 'exclusive':
+                if s not in self.errorf:
+                    errorlog.warning("No error rule is defined for exclusive state '%s'", s)
+                if s not in self.ignore and self.ignore.get('INITIAL', ''):
+                    errorlog.warning("No ignore rule is defined for exclusive state '%s'", s)
+            elif stype == 'inclusive':
+                if s not in self.errorf:
+                    self.errorf[s] = self.errorf.get('INITIAL', None)
+                if s not in self.ignore:
+                    self.ignore[s] = self.ignore.get('INITIAL', '')
 
     # Get all of the basic information
-    def get_all(self):
-        self.get_tokens()
-        self.get_literals()
-        self.get_states()
-        self.get_rules()
+    def _get_all(self):
+        self._get_tokens()
+        self._get_literals()
+        self._get_states()
+        self._get_rules()
 
     # Validate all of the information
-    def validate_all(self):
-        self.validate_tokens()
-        self.validate_literals()
-        self.validate_rules()
+    def _validate_all(self):
+        self._validate_tokens()
+        self._validate_literals()
+        self._validate_rules()
         return self.error
 
     # Get the tokens map
-    def get_tokens(self):
+    def _get_tokens(self):
         tokens = self.ldict.get('tokens', None)
         if not tokens:
             self.log.error('No token list is defined')
@@ -570,7 +593,7 @@ class LexerReflect(object):
         self.tokens = tokens
 
     # Validate the tokens
-    def validate_tokens(self):
+    def _validate_tokens(self):
         terminals = {}
         for n in self.tokens:
             if not _is_identifier.match(n):
@@ -581,13 +604,13 @@ class LexerReflect(object):
             terminals[n] = 1
 
     # Get the literals specifier
-    def get_literals(self):
+    def _get_literals(self):
         self.literals = self.ldict.get('literals', '')
         if not self.literals:
             self.literals = ''
 
     # Validate literals
-    def validate_literals(self):
+    def _validate_literals(self):
         try:
             for c in self.literals:
                 if not isinstance(c, StringTypes) or len(c) > 1:
@@ -598,7 +621,7 @@ class LexerReflect(object):
             self.log.error('Invalid literals specification. literals must be a sequence of characters')
             self.error = True
 
-    def get_states(self):
+    def _get_states(self):
         self.states = self.ldict.get('states', None)
         # Build statemap
         if self.states:
@@ -628,7 +651,7 @@ class LexerReflect(object):
 
     # Get all of the symbols with a t_ prefix and sort them into various
     # categories (functions, strings, error functions, and ignore characters)
-    def get_rules(self):
+    def _get_rules(self):
         tsymbols = [f for f in self.ldict if f[:2] == 't_']
 
         # Now build up a list of functions and a list of strings
@@ -694,7 +717,7 @@ class LexerReflect(object):
             s.sort(key=lambda x: len(x[1]), reverse=True)
 
     # Validate all of the t_rules collected
-    def validate_rules(self):
+    def _validate_rules(self):
         for state in self.stateinfo:
             # Validate all rules defined by functions
 
@@ -787,9 +810,9 @@ class LexerReflect(object):
                     self.error = True
 
         for module in self.modules:
-            self.validate_module(module)
+            self._validate_module(module)
 
-    def validate_module(self, module):
+    def _validate_module(self, module):
         """
         This checks to see if there are duplicated t_rulename() functions or strings
         in the parser input file.  This is done using a simple regular expression
@@ -860,13 +883,6 @@ def lex(module=None, object=None, debug=False, optimize=False, lextab='lextab',
         if '.' not in lextab:
             lextab = pkg + '.' + lextab
 
-    # Collect parser information from the dictionary
-    linfo = LexerReflect(ldict, log=errorlog, reflags=reflags)
-    linfo.get_all()
-    if not optimize:
-        if linfo.validate_all():
-            raise SyntaxError("Can't build lexer")
-
     if optimize and lextab:
         try:
             lexobj = Lexer()
@@ -880,24 +896,9 @@ def lex(module=None, object=None, debug=False, optimize=False, lextab='lextab',
         except ImportError:
             pass
 
-    # Dump some basic debugging information
-    if debug:
-        debuglog.info('lex: tokens   = %r', linfo.tokens)
-        debuglog.info('lex: literals = %r', linfo.literals)
-        debuglog.info('lex: states   = %r', linfo.stateinfo)
-
-    # Check state information for ignore and error rules
-    for s, stype in linfo.stateinfo.items():
-        if stype == 'exclusive':
-            if s not in linfo.errorf:
-                errorlog.warning("No error rule is defined for exclusive state '%s'", s)
-            if s not in linfo.ignore and linfo.ignore.get('INITIAL', ''):
-                errorlog.warning("No ignore rule is defined for exclusive state '%s'", s)
-        elif stype == 'inclusive':
-            if s not in linfo.errorf:
-                linfo.errorf[s] = linfo.errorf.get('INITIAL', None)
-            if s not in linfo.ignore:
-                linfo.ignore[s] = linfo.ignore.get('INITIAL', '')
+    # Collect parser information from the dictionary
+    linfo = _LexerReflect(ldict, log=errorlog, reflags=reflags, optimize=optimize,
+                          debug=debug, debuglog=debuglog, errorlog=errorlog)
 
     regexs = {}
     # Build the master regular expressions
