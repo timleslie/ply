@@ -130,7 +130,7 @@ class Lexer:
        lineno           -  Current line number
        lexpos           -  Current position in the input string
     """
-    def __init__(self):
+    def __init__(self, optimize):
         self._state = LexState(None, None, '', None, None)
         self._states = {}
 
@@ -146,7 +146,7 @@ class Lexer:
         self.lexliterals = ''      # Literal characters that can be passed through
         self.lexmodule = None      # Module
         self.lineno = 1            # Current line number
-        self.lexoptimize = False   # Optimized mode
+        self.lexoptimize = optimize   # Optimized mode
 
     def clone(self, object=None):
         c = copy.copy(self)
@@ -317,9 +317,8 @@ class Lexer:
                     continue
 
                 # Create a token for return
-                i = m.lastindex
-                tok = LexToken(lexindexfunc[i][1], m.group(), self.lineno, lexpos)
-                func, _ = lexindexfunc[i]
+                func, type_ = lexindexfunc[m.lastindex]
+                tok = LexToken(type_, m.group(), self.lineno, lexpos)
 
                 if not func:
                     # If no token type was set, it's an ignored token
@@ -381,8 +380,7 @@ class Lexer:
             tok = LexToken('eof', '', self.lineno, lexpos)
             tok.lexer = self
             self.lexpos = lexpos
-            newtok = self._state.eoff(tok)
-            return newtok
+            return self._state.eoff(tok)
 
         self.lexpos = lexpos + 1
         if self.lexdata is None:
@@ -885,8 +883,7 @@ def lex(module=None, object=None, debug=False, optimize=False, lextab='lextab',
 
     if optimize and lextab:
         try:
-            lexobj = Lexer()
-            lexobj.lexoptimize = optimize
+            lexobj = Lexer(optimize)
             lexobj.readtab(lextab, ldict)
             token = lexobj.token
             input = lexobj.input
@@ -923,9 +920,7 @@ def lex(module=None, object=None, debug=False, optimize=False, lextab='lextab',
 
     # Build the master regular expressions
 
-    lexobj = Lexer()
-    lexobj.lexoptimize = optimize
-
+    lexobj = Lexer(optimize)
     lexobj.lextokens = set(linfo.tokens)
     if isinstance(linfo.literals, (list, tuple)):
         lexobj.lexliterals = type(linfo.literals[0])().join(linfo.literals)
