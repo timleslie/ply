@@ -318,7 +318,7 @@ class Lexer:
 
                 # Create a token for return
                 func, type_ = lexindexfunc[m.lastindex]
-                tok = LexToken(type_, m.group(), self.lineno, lexpos)
+                tok = LexToken(type_, m.group(), self.lineno, lexpos, self)
 
                 if not func:
                     # If no token type was set, it's an ignored token
@@ -332,7 +332,6 @@ class Lexer:
                 lexpos = m.end()
 
                 # If token is processed by a function, call it
-                tok.lexer = self      # Set additional attributes useful in token rules
                 self.lexmatch = m
                 self.lexpos = lexpos
 
@@ -355,14 +354,11 @@ class Lexer:
             else:
                 # No match, see if in literals
                 if lexdata[lexpos] in self.lexliterals:
-                    tok = LexToken(lexdata[lexpos], lexdata[lexpos], self.lineno, lexpos)
                     self.lexpos = lexpos + 1
-                    return tok
-
+                    return LexToken(lexdata[lexpos], lexdata[lexpos], self.lineno, lexpos)
                 # No match. Call t_error() if defined.
-                if self._state.errorf:
-                    tok = LexToken('error', self.lexdata[lexpos:], self.lineno, lexpos)
-                    tok.lexer = self
+                elif self._state.errorf:
+                    tok = LexToken('error', self.lexdata[lexpos:], self.lineno, lexpos, self)
                     self.lexpos = lexpos
                     newtok = self._state.errorf(tok)
                     if lexpos == self.lexpos:
@@ -372,13 +368,12 @@ class Lexer:
                     if not newtok:
                         continue
                     return newtok
-
-                self.lexpos = lexpos
-                raise LexError("Illegal character '%s' at index %d" % (lexdata[lexpos], lexpos), lexdata[lexpos:])
+                else:
+                    self.lexpos = lexpos
+                    raise LexError("Illegal character '%s' at index %d" % (lexdata[lexpos], lexpos), lexdata[lexpos:])
 
         if self._state.eoff:
-            tok = LexToken('eof', '', self.lineno, lexpos)
-            tok.lexer = self
+            tok = LexToken('eof', '', self.lineno, lexpos, self)
             self.lexpos = lexpos
             return self._state.eoff(tok)
 
@@ -620,14 +615,14 @@ class _LexerReflect(object):
             self.error = True
 
     def _get_states(self):
-        self.states = self.ldict.get('states', None)
+        states = self.ldict.get('states', None)
         # Build statemap
-        if self.states:
-            if not isinstance(self.states, (tuple, list)):
+        if states:
+            if not isinstance(states, (tuple, list)):
                 self.log.error('states must be defined as a tuple or list')
                 self.error = True
             else:
-                for s in self.states:
+                for s in states:
                     if not isinstance(s, tuple) or len(s) != 2:
                         self.log.error("Invalid state specifier %s. Must be a tuple (statename,'exclusive|inclusive')", repr(s))
                         self.error = True
