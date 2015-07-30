@@ -892,29 +892,7 @@ def lex(module=None, object=None, debug=False, optimize=False, lextab='lextab',
     linfo = _LexerReflect(ldict, log=errorlog, reflags=reflags, optimize=optimize,
                           debug=debug, debuglog=debuglog, errorlog=errorlog)
 
-    regexs = {}
     # Build the master regular expressions
-    for state in linfo.stateinfo:
-        regex_list = []
-
-        # Add rules defined by functions first
-        for fname, f in linfo.funcsym[state]:
-            line = f.__code__.co_firstlineno
-            file = f.__code__.co_filename
-            regex_list.append('(?P<%s>%s)' % (fname, _get_regex(f)))
-            if debug:
-                debuglog.info("lex: Adding rule %s -> '%s' (state '%s')", fname, _get_regex(f), state)
-
-        # Now add all of the simple rules
-        for name, r in linfo.strsym[state]:
-            regex_list.append('(?P<%s>%s)' % (name, r))
-            if debug:
-                debuglog.info("lex: Adding rule %s -> '%s' (state '%s')", name, r, state)
-
-        regexs[state] = regex_list
-
-    # Build the master regular expressions
-
     lexobj = Lexer(optimize)
     lexobj.lextokens = set(linfo.tokens)
     if isinstance(linfo.literals, (list, tuple)):
@@ -926,8 +904,10 @@ def lex(module=None, object=None, debug=False, optimize=False, lextab='lextab',
     if debug:
         debuglog.info('lex: ==== MASTER REGEXS FOLLOW ====')
 
-    for state in regexs:
-        lexre, re_text, re_names = _form_master_re(regexs[state], reflags, ldict, linfo.toknames)
+    for state in linfo.stateinfo:
+        regex_list = ['(?P<%s>%s)' % (fname, _get_regex(f)) for fname, f in linfo.funcsym[state]] + \
+                     ['(?P<%s>%s)' % (name, r) for name, r in linfo.strsym[state]]
+        lexre, re_text, re_names = _form_master_re(regex_list, reflags, ldict, linfo.toknames)
         lexobj.lexstaterenames[state] = re_names
         if debug:
             for i, text in enumerate(re_text):
